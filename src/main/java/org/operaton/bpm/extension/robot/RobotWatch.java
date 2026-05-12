@@ -4,6 +4,7 @@ import static java.nio.file.StandardWatchEventKinds.ENTRY_CREATE;
 import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -108,7 +109,11 @@ public class RobotWatch {
 
       // Create initial context and run once
       final String finalVfsSrcPath = vfsSrcPath;
-      Context[] ctxHolder = {createContext(cwd, finalVfsSrcPath)};
+      final boolean debugMode = Robot.isDebugMode(args);
+      if (debugMode) {
+        System.setProperty("ROBOT_LOG_LEVEL", "INFO");
+      }
+      Context[] ctxHolder = {createContext(cwd, finalVfsSrcPath, debugMode)};
       runSuite(ctxHolder[0], cwd, suite.toString());
 
       while (true) {
@@ -138,7 +143,7 @@ public class RobotWatch {
         if (needsReload) {
           System.out.println(">>> Python source changed — recreating context...");
           ctxHolder[0].close();
-          ctxHolder[0] = createContext(cwd, finalVfsSrcPath);
+          ctxHolder[0] = createContext(cwd, finalVfsSrcPath, debugMode);
         }
 
         runSuite(ctxHolder[0], cwd, suite.toString());
@@ -151,13 +156,17 @@ public class RobotWatch {
     }
   }
 
-  private static Context createContext(String cwd, String vfsSrcPath) {
-    Context ctx =
+  private static Context createContext(String cwd, String vfsSrcPath, boolean debugMode) {
+    Context.Builder builder =
         GraalPyResources.contextBuilder()
             .allowAllAccess(true)
             .allowExperimentalOptions(true)
             .option("python.IsolateNativeModules", "true")
-            .build();
+            .option("engine.WarnInterpreterOnly", "false");
+    if (!debugMode) {
+      builder.logHandler(OutputStream.nullOutputStream());
+    }
+    Context ctx = builder.build();
 
     ctx.getBindings(PYTHON).putMember("_watch_cwd", cwd);
     ctx.getBindings(PYTHON).putMember("_watch_vfs_src", vfsSrcPath != null ? vfsSrcPath : "");

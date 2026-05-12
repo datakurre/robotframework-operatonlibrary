@@ -94,6 +94,38 @@ The full library source is [src/main/resources/org.graalvm.python.vfs/src/Proces
 
 ---
 
+## Logging
+
+By default the library runs quietly — Operaton engine messages (database
+creation, schema setup, engine lifecycle) are suppressed. Only warnings and
+errors from the process engine are shown.
+
+To enable verbose engine output, pass Robot Framework's standard
+`--loglevel DEBUG` (or `--loglevel TRACE`) option. The library detects this
+flag and promotes the Java log level to `INFO`:
+
+```sh
+# Via Maven runner
+devenv shell --no-eval-cache -- make robot SUITE=src/test/resources/example/Example.robot -- --loglevel DEBUG
+
+# Via fat JAR directly
+java -jar target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar \
+    --loglevel DEBUG src/test/resources/example/Example.robot
+
+# Via make run-shade
+devenv shell --no-eval-cache -- make run-shade SUITE="--loglevel DEBUG src/test/resources/example/Example.robot"
+```
+
+The `--loglevel` value controls Robot Framework's own output verbosity *and*
+gates the Operaton/Java log level simultaneously:
+
+| `--loglevel` value | Robot output | Operaton engine logs |
+|---|---|---|
+| *(not set)* / `INFO` / `WARN` | default | suppressed (WARN+) |
+| `DEBUG` or `TRACE` | verbose | INFO+ (full engine output) |
+
+---
+
 ## Native image (optional)
 
 To compile a standalone native executable (requires a GraalVM JDK with Native

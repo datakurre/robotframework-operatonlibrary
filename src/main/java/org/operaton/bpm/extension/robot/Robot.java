@@ -1,6 +1,7 @@
 package org.operaton.bpm.extension.robot;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -18,11 +19,20 @@ public class Robot {
       return;
     }
 
-    try (Context context =
+    boolean debugMode = isDebugMode(args);
+    if (debugMode) {
+      System.setProperty("ROBOT_LOG_LEVEL", "INFO");
+    }
+
+    Context.Builder builder =
         GraalPyResources.contextBuilder()
             .allowAllAccess(true)
             .allowExperimentalOptions(true)
-            .build()) {
+            .option("engine.WarnInterpreterOnly", "false");
+    if (!debugMode) {
+      builder.logHandler(OutputStream.nullOutputStream());
+    }
+    try (Context context = builder.build()) {
       context.getBindings(PYTHON).putMember("cwd", System.getProperty("user.dir"));
       context.getBindings(PYTHON).putMember("args", String.join(" ", args));
       Source source;
@@ -58,5 +68,20 @@ public class Robot {
         throw e;
       }
     }
+  }
+
+  static boolean isDebugMode(String[] args) {
+    for (int i = 0; i < args.length; i++) {
+      String arg = args[i];
+      if (arg.startsWith("--loglevel=")) {
+        String level = arg.substring("--loglevel=".length()).toUpperCase();
+        return level.startsWith("DEBUG") || level.startsWith("TRACE");
+      }
+      if ("--loglevel".equals(arg) && i + 1 < args.length) {
+        String level = args[i + 1].toUpperCase();
+        return level.startsWith("DEBUG") || level.startsWith("TRACE");
+      }
+    }
+    return false;
   }
 }
