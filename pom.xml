@@ -151,6 +151,7 @@
             <configuration>
               <packages>
                 <package>robotframework==7.1.1</package>
+                <package>robotframework-pythonlibcore==4.5.0</package>
               </packages>
               <pythonHome>
                 <includes>
