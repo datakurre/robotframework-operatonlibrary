@@ -61,14 +61,19 @@ run-native:
 #
 #   make watch                             — Maven runner, all suites
 #   make watch SUITE=Example               — Maven runner, one suite (class-name prefix)
-#   make watch-shade                       — fat JAR runner, all suites
-#   make watch-shade SUITE=path/to.robot   — fat JAR runner, one suite
+#   make watch-shade                       — fat JAR in-process watcher, all suites
+#   make watch-shade SUITE=path/to.robot   — fat JAR in-process watcher, one suite
 #   make watch-native                      — native binary runner, all suites
 #   make watch-native SUITE=path/to.robot  — native binary runner, one suite
 #
+# watch-shade uses a persistent GraalPy context: the JVM starts once and Robot
+# Framework is re-invoked in the same context on each file change (~1s re-run).
+# On .py changes the context is recreated; Python source is loaded from disk
+# (no fat JAR rebuild needed during watch).
+#
 # .py changes:
 #   watch        → VFS rebuild via mvn process-resources, then re-run
-#   watch-shade  → fat JAR rebuild via mvn -Pshade package (~13s), then re-run
+#   watch-shade  → context recreation only (~2-3s), disk-loaded Python
 #   watch-native → warning only; run 'make native' manually to bake .py changes in
 
 .PHONY: watch
@@ -98,24 +103,7 @@ watch:
 
 .PHONY: watch-shade
 watch-shade:
-	@echo "Watching: $(WATCH_PATHS)"
-	@echo "Suite: $(or $(SUITE),src/test/resources/example)"
-	@echo "Runner: fat JAR  (.py changes trigger fat JAR rebuild, ~13s)"
-	@echo "Press Ctrl+C to stop."
-	@echo "─────────────────────────────────────────────"
-	@while true; do \
-	  CHANGED=$$(inotifywait -r -e modify,create --format '%f' \
-	    --include '\.(robot|bpmn|dmn|py)$$' $(WATCH_PATHS) 2>/dev/null); \
-	  echo ""; \
-	  echo ">>> Changed: $$CHANGED"; \
-	  if echo "$$CHANGED" | grep -q '\.py$$'; then \
-	    echo ">>> Python source changed — rebuilding fat JAR..."; \
-	    mvn -q -Pshade package -DskipTests; \
-	  fi; \
-	  echo ">>> Running: $(or $(SUITE),src/test/resources/example)"; \
-	  $(JAVA) -jar $(JAR_FAT) $(or $(SUITE),src/test/resources/example) 2>&1 | tail -20; \
-	  echo "─────────────────────────────────────────────"; \
-	done
+	$(JAVA) -jar $(JAR_FAT) --watch $(or $(SUITE),src/test/resources/example)
 
 .PHONY: watch-native
 watch-native:

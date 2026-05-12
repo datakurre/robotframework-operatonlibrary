@@ -12,6 +12,12 @@ public class Robot {
   private static final String PYTHON = "python";
 
   public static void main(String[] args) {
+    // Delegate to watch mode when --watch is the first argument
+    if (args.length > 0 && "--watch".equals(args[0])) {
+      RobotWatch.run(args);
+      return;
+    }
+
     try (Context context =
         GraalPyResources.contextBuilder()
             .allowAllAccess(true)
