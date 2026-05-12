@@ -75,9 +75,17 @@ function buildDOM(html) {
     if (!proto.getScreenCTM) {
       proto.getScreenCTM = function () { return new SVGMatrix(); };
     }
-    if (!proto.getComputedTextLength) {
-      proto.getComputedTextLength = function () { return (this.textContent || "").length * 6; };
-    }
+    // Override unconditionally — linkedom stubs these to return 0, which causes
+    // bpmn-js's text layout algorithm to split each character onto its own line.
+    proto.getComputedTextLength = function () {
+      return (this.textContent || "").length * 6;
+    };
+    proto.getSubStringLength = function (startIndex, endIndex) {
+      const text = this.textContent || "";
+      const start = Math.max(0, startIndex);
+      const end = Math.min(text.length, endIndex);
+      return Math.max(0, end - start) * 6;
+    };
     if (!proto.createSVGMatrix) {
       proto.createSVGMatrix = function () { return new SVGMatrix(); };
     }

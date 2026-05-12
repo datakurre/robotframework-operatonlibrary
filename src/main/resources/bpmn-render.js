@@ -15302,11 +15302,15 @@ function buildDOM(html) {
         return new SVGMatrix2();
       };
     }
-    if (!proto.getComputedTextLength) {
-      proto.getComputedTextLength = function() {
-        return (this.textContent || "").length * 6;
-      };
-    }
+    proto.getComputedTextLength = function() {
+      return (this.textContent || "").length * 6;
+    };
+    proto.getSubStringLength = function(startIndex, endIndex) {
+      const text = this.textContent || "";
+      const start = Math.max(0, startIndex);
+      const end = Math.min(text.length, endIndex);
+      return Math.max(0, end - start) * 6;
+    };
     if (!proto.createSVGMatrix) {
       proto.createSVGMatrix = function() {
         return new SVGMatrix2();

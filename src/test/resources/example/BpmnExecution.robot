@@ -52,3 +52,20 @@ Log Bpmn Execution Logs Svg When Node Available
     Complete Task    ${instance}    task-a
     Complete Task    ${instance}    task-b
     Log Bpmn Execution    ${instance}
+
+Log Bpmn Partial Execution Only Task A Completed
+    [Documentation]    Shows partial execution: task-a done, task-b still active.
+    [Setup]    Setup Process Engine
+    [Teardown]    Teardown Process Engine
+    Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
+    ${instance}=    Start Instance    multi-task-process
+    Complete Task    ${instance}    task-a
+    Log Bpmn Execution    ${instance}
+
+Log Bpmn No Tasks Completed Yet
+    [Documentation]    Shows an instance just started, both parallel tasks active.
+    [Setup]    Setup Process Engine
+    [Teardown]    Teardown Process Engine
+    Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
+    ${instance}=    Start Instance    multi-task-process
+    Log Bpmn Execution    ${instance}
