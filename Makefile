@@ -1,6 +1,7 @@
 JAVA := $(shell which java)
 JAVA_FILES := $(shell find . -name "*.java" -path "*/src/*" -not -path "./tmp/*" -type f)
 JAR := target/operaton-bpm-extension-robot-1.0-SNAPSHOT.jar
+JAR_FAT := target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar
 NATIVE_BIN := target/operaton-bpm-extension-robot
 WATCH_PATHS := src/test/resources/example src/main/resources/org.graalvm.python.vfs/src
 VFS_SRC := src/main/resources/org.graalvm.python.vfs/src
@@ -49,7 +50,7 @@ robot:
 
 .PHONY: run-shade
 run-shade:
-	$(JAVA) -jar $(JAR) $(SUITE)
+	$(JAVA) -jar $(JAR_FAT) $(SUITE)
 
 .PHONY: run-native
 run-native:
@@ -98,10 +99,6 @@ docs:
 	mkdir -p docs
 	mvn -q -DskipTests package
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/ProcessEngine.html"
-
-.PHONY: shell
-shell:
-	devenv shell
 
 .PHONY: shell
 shell:
