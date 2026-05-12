@@ -15302,15 +15302,6 @@ function buildDOM(html) {
         return new SVGMatrix2();
       };
     }
-    proto.getComputedTextLength = function() {
-      return (this.textContent || "").length * 6;
-    };
-    proto.getSubStringLength = function(startIndex, endIndex) {
-      const text = this.textContent || "";
-      const start = Math.max(0, startIndex);
-      const end = Math.min(text.length, endIndex);
-      return Math.max(0, end - start) * 6;
-    };
     if (!proto.createSVGMatrix) {
       proto.createSVGMatrix = function() {
         return new SVGMatrix2();
@@ -15338,9 +15329,26 @@ function buildDOM(html) {
   if (origCreateElementNS) {
     document2.createElementNS = function(ns, tag) {
       const el = origCreateElementNS(ns, tag);
-      if (ns === "http://www.w3.org/2000/svg" && !el.transform) {
-        const list = new SVGTransformList();
-        el.transform = { baseVal: list, animVal: list };
+      if (ns === "http://www.w3.org/2000/svg") {
+        if (!el.transform) {
+          const list = new SVGTransformList();
+          el.transform = { baseVal: list, animVal: list };
+        }
+        const lowerTag = tag.toLowerCase();
+        if (lowerTag === "text" || lowerTag === "tspan") {
+          el.getBBox = function() {
+            const len = (this.textContent || "").length;
+            return { x: 0, y: 0, width: len * 7, height: 14 };
+          };
+          el.getComputedTextLength = function() {
+            return (this.textContent || "").length * 7;
+          };
+          el.getSubStringLength = function(startIndex, endIndex) {
+            const start = Math.max(0, startIndex);
+            const end = Math.min((this.textContent || "").length, endIndex);
+            return Math.max(0, end - start) * 7;
+          };
+        }
       }
       return el;
     };
