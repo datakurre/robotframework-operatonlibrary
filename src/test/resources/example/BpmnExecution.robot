@@ -10,8 +10,11 @@ Get Activity History Returns Activity List
     [Teardown]    Teardown Process Engine
     Deploy Resources    ${CURDIR}${/}multi-task-process.bpmn
     ${instance}=    Start Instance    multi-task-process
+    Log Bpmn Execution    ${instance}
     Complete Task    ${instance}    task-a
+    Log Bpmn Execution    ${instance}
     Complete Task    ${instance}    task-b
+    Log Bpmn Execution    ${instance}
     ${activities}=    Get Activity History    ${instance}
     ${count}=    Get Length    ${activities}
     Should Be True    ${count} >= 3

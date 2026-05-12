@@ -8,14 +8,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Renders a BPMN diagram to SVG by invoking the bundled {@code bpmn-render.js} script
- * via a {@code node} subprocess.
+ * Renders a BPMN diagram to SVG by invoking the bundled {@code bpmn-render.js} script via a {@code
+ * node} subprocess.
  *
- * <p>The script is extracted from the classpath to a temporary file on first use and
- * cached for the lifetime of the JVM.
+ * <p>The script is extracted from the classpath to a temporary file on first use and cached for the
+ * lifetime of the JVM.
  *
- * <p>Requires Node.js 18+ on PATH at runtime. If {@code node} is not available, callers
- * should degrade gracefully (see {@link #isNodeAvailable()}).
+ * <p>Requires Node.js 18+ on PATH at runtime. If {@code node} is not available, callers should
+ * degrade gracefully (see {@link #isNodeAvailable()}).
  */
 public class BpmnRenderer {
 
@@ -57,15 +57,13 @@ public class BpmnRenderer {
   /**
    * Returns {@code true} if {@code node} is executable on the current PATH.
    *
-   * <p>The check is done by running {@code node --version}; result is not cached so
-   * that callers can detect changes between calls (e.g., during testing).
+   * <p>The check is done by running {@code node --version}; result is not cached so that callers
+   * can detect changes between calls (e.g., during testing).
    */
   public static boolean isNodeAvailable() {
     try {
-      int exit = new ProcessBuilder("node", "--version")
-          .redirectErrorStream(true)
-          .start()
-          .waitFor();
+      int exit =
+          new ProcessBuilder("node", "--version").redirectErrorStream(true).start().waitFor();
       return exit == 0;
     } catch (Exception e) {
       return false;
