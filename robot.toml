@@ -14,6 +14,8 @@ paths = ["src/test/resources/example"]
 
 [env]
 OPERATON_JAR = "target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar"
+# GraalPy JVM startup takes ~20-30s; raise RobotCode's library-load timeout accordingly.
+ROBOTCODE_LOAD_LIBRARY_TIMEOUT = "120"
 
 [tool.robotcode-analyze]
 # Prevent RobotCode from importing the Operaton library during analysis

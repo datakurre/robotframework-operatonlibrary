@@ -97,10 +97,12 @@ class BpmnKeywords:
 
         try:
             svg = str(BpmnRenderer.renderSvg(input_json))
-            logger.info(
-                f'<div class="bpmn-execution" '
-                f'style="max-width:100%;overflow:auto">{svg}</div>',
-                html=True,
+            # Use print(*HTML*) so the message survives robotremoteserver's
+            # StandardStreamInterceptor (RF 7.x logger writes to sys.__stdout__,
+            # not sys.stdout, so logger.info(html=True) is silently dropped).
+            print(
+                f'*HTML* <div class="bpmn-execution" '
+                f'style="max-width:100%;overflow:auto">{svg}</div>'
             )
         except Exception as exc:
-            logger.warn(f"BPMN rendering failed: {exc}")
+            print(f'*WARN* BPMN rendering failed: {exc}')

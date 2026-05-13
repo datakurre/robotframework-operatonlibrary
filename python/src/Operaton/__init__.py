@@ -18,6 +18,7 @@ Python process exits.
 import atexit
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -76,13 +77,23 @@ class Operaton:
                     "JDK 21+ is required to run the Operaton library."
                 )
 
+        # When port=0 (auto), pre-select a free port on the CPython side.
+        # Relying on GraalPy's socket.getsockname() after bind(port=0) can
+        # return 0 instead of the OS-assigned port, causing the proxy to
+        # connect to http://127.0.0.1:0.
+        listen_port = self._port
+        if listen_port == 0:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", 0))
+                listen_port = s.getsockname()[1]
+
         cmd = [
             java_cmd,
             "-jar",
             self._jar,
             "--remote",
             "--port",
-            str(self._port),
+            str(listen_port),
             "--port-file",
             self._port_file,
         ]

@@ -43,6 +43,7 @@ public class RobotRemote {
         GraalPyResources.contextBuilder()
             .allowAllAccess(true)
             .allowExperimentalOptions(true)
+            .option("engine.WarnInterpreterOnly", "false")
             .build()) {
       context.getBindings(PYTHON).putMember("_remote_port", port);
       context.getBindings(PYTHON).putMember("_remote_port_file", portFile);
@@ -55,6 +56,20 @@ public class RobotRemote {
                     """
                     import os
                     import sys
+                    import types
+
+                    # Register a minimal sysconfig data stub so CPython's sysconfig.py
+                    # does not try to load platform-specific _sysconfigdata variants that
+                    # are unavailable in GraalPy's embedded VFS (e.g. from a Nix devenv).
+                    _scd_stub = types.ModuleType('_sysconfigdata')
+                    _scd_stub.build_time_vars = {}
+                    sys.modules['_sysconfigdata'] = _scd_stub
+                    # _PYTHON_SYSCONFIGDATA_NAME tells sysconfig._get_sysconfigdata_name()
+                    # to return '_sysconfigdata', which is found in sys.modules above.
+                    # Override unconditionally — the host env may carry a CPython path
+                    # (e.g. from Nix devenv) that does not exist inside GraalPy's VFS.
+                    os.environ['_PYTHON_SYSCONFIGDATA_NAME'] = '_sysconfigdata'
+
                     sys.path.insert(0, cwd)
                     sys.path.insert(1, os.path.join(cwd, "lib"))
 

@@ -6,6 +6,7 @@ NATIVE_BIN := target/operaton-bpm-extension-robot
 WATCH_PATHS := src/test/resources/example src/main/resources/org.graalvm.python.vfs/src
 VFS_SRC := src/main/resources/org.graalvm.python.vfs/src
 BPMN_RENDER_JS := src/main/resources/bpmn-render.js
+DMN_RENDER_JS := src/main/resources/dmn-render.js
 JS_SOURCES := src/main/js/src/render.mjs src/main/js/package.json
 
 .PHONY: all
@@ -38,6 +39,9 @@ bpmn-render: $(BPMN_RENDER_JS)
 
 $(BPMN_RENDER_JS): $(JS_SOURCES)
 	cd src/main/js && npm install && node esbuild.config.mjs
+
+# The dmn-render.js script is self-contained (no external dependencies);
+# it is maintained directly in src/main/resources/ and does not need bundling.
 
 # ─── Test targets ────────────────────────────────────────────────────────────
 

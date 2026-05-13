@@ -55,7 +55,10 @@ class Operaton(DynamicCore):
     def setup_process_engine(self) -> Any:
         if self.engine is None:
             self.engine = (
-                ProcessEngineConfiguration.createStandaloneInMemProcessEngineConfiguration().buildProcessEngine()
+                ProcessEngineConfiguration.createStandaloneInMemProcessEngineConfiguration()
+                .setHistory(ProcessEngineConfiguration.HISTORY_FULL)
+                .setHostname("localhost")
+                .buildProcessEngine()
             )
         return self.engine
 

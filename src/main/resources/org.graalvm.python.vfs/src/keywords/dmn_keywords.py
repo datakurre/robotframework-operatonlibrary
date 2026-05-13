@@ -1,7 +1,17 @@
 from robot.api.deco import keyword
 from typing import Any
 
+import json
+
 from keywords.base import Variables, except_interop_exception
+
+try:
+    import java  # pyright: ignore
+except ImportError:
+    class java:
+        @staticmethod
+        def type(klass: str) -> Any:
+            pass
 
 
 class DmnKeywords:
@@ -169,3 +179,108 @@ class DmnKeywords:
             f"Decision definition '{decision_key}' not found"
         )
         return str(result.getId())
+
+    @keyword
+    @except_interop_exception
+    def log_dmn_result(self, decision_key: str):
+        """Renders the most recently evaluated DMN decision table as HTML and logs it.
+
+        Shows the full decision table with matched/fired rules highlighted in green.
+        Must be called after ``Evaluate Decision`` or ``Evaluate Decision Table``
+        for the same decision key.
+
+        Requires Node.js 18+ on PATH. If ``node`` is unavailable, logs a warning
+        and returns without failing.
+
+        Example usage in Robot::
+
+            Deploy Resources    ${CURDIR}${/}discount.dmn
+            ${result}=    Evaluate Decision    discount    customerType=gold
+            Log Dmn Result    discount
+        """
+        assert self.ctx.engine, "No engine"
+
+        BpmnRenderer = java.type(
+            "org.operaton.bpm.extension.robot.BpmnRenderer"
+        )
+        if not BpmnRenderer.isNodeAvailable():
+            print(
+                f"*WARN* DMN rendering skipped: 'node' not found on PATH "
+                f"(decision: {decision_key})"
+            )
+            return
+
+        # Get decision definition
+        repository = self.ctx.engine.getRepositoryService()
+        definition = (
+            repository.createDecisionDefinitionQuery()
+            .decisionDefinitionKey(decision_key)
+            .latestVersion()
+            .singleResult()
+        )
+        assert definition is not None, (
+            f"Decision definition '{decision_key}' not found"
+        )
+        definition_id = str(definition.getId())
+
+        # Fetch DMN XML
+        stream = repository.getDecisionModel(definition_id)
+        Scanner = java.type("java.util.Scanner")
+        scanner = Scanner(stream, "UTF-8").useDelimiter("\\A")
+        dmn_xml = str(scanner.next()) if scanner.hasNext() else ""
+        scanner.close()
+
+        # Query latest historic decision instance for matched rules
+        history = self.ctx.engine.getHistoryService()
+        instances = (
+            history.createHistoricDecisionInstanceQuery()
+            .decisionDefinitionKey(decision_key)
+            .includeOutputs()
+            .orderByEvaluationTime()
+            .desc()
+            .listPage(0, 1)
+        )
+
+        # getRuleOrder() returns the 1-based position of the matched rule in
+        # the decision table (1-based Integer). This is used to highlight the
+        # correct row in the renderer. Note: HISTORY_FULL engine level is
+        # required for HistoricDecisionInstance outputs to be recorded.
+        matched_orders = []
+        if int(instances.size()) > 0:
+            instance = instances.get(0)
+            outputs = instance.getOutputs()
+            seen = set()
+            for i in range(int(outputs.size())):
+                rule_order_raw = outputs.get(i).getRuleOrder()
+                if rule_order_raw is not None:
+                    order = int(rule_order_raw)
+                    if order not in seen:
+                        matched_orders.append(order)
+                        seen.add(order)
+
+        # Call Node.js renderer
+        input_json = json.dumps({
+            "dmn": dmn_xml,
+            "decisionId": decision_key,
+            "matchedRules": matched_orders,
+        })
+
+        try:
+            html = str(BpmnRenderer.renderDmnHtml(input_json))
+            # Use print(*HTML*) so the message survives robotremoteserver's
+            # StandardStreamInterceptor (RF 7.x logger writes to sys.__stdout__,
+            # not sys.stdout, so logger.info(html=True) is silently dropped).
+            print(
+                f'*HTML* <div class="dmn-result" '
+                f'style="max-width:100%;overflow:auto">{html}</div>'
+            )
+        except:  # noqa - bare except needed to catch GraalPy host exceptions
+            import sys as _sys
+            _exc = _sys.exc_info()[1]
+            _msg = str(_exc) if _exc else "unknown error"
+            try:
+                if hasattr(_exc, 'getMessage') and _exc.getMessage():
+                    _msg = str(_exc.getMessage())
+            except Exception:
+                pass
+            print(f'*WARN* DMN rendering failed: {_msg}')
