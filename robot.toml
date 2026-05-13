@@ -1,0 +1,22 @@
+# robot.toml — RobotCode integration for Operaton Robot Framework library
+#
+# This configuration enables the RobotCode VS Code extension to:
+# 1. Discover Operaton keywords via the .libspec file (LSP completions, hover)
+# 2. Execute tests via the CPython proxy that auto-spawns the GraalPy/JVM backend
+#
+# Prerequisites:
+#   - Java 21+ on PATH (or JAVA_HOME set)
+#   - Fat JAR built: mvn -Pshade package -DskipTests
+#   - Python proxy installed: pip install -e python/
+#   - Libspec generated: make libspec
+
+paths = ["src/test/resources/example"]
+
+[env]
+OPERATON_JAR = "target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar"
+
+[tool.robotcode-analyze]
+# Prevent RobotCode from importing the Operaton library during analysis
+# (which would start a JVM). The .libspec provides keyword info instead.
+[tool.robotcode-analyze.cache]
+ignored-libraries = ["Operaton"]

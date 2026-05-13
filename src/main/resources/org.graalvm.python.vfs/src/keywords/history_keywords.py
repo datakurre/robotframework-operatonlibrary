@@ -19,19 +19,32 @@ class HistoryKeywords:
 
     @keyword
     @except_interop_exception
-    def get_completed_instances(self, process_definition_key: str = "") -> Any:
-        """Returns a list of completed historic process instances."""
+    def get_completed_instances(self, process_definition_key: str = "") -> list:
+        """Returns a list of completed historic process instances as dicts.
+
+        Each dict has: id, processDefinitionKey, startTime, endTime.
+        """
         assert self.ctx.engine, "No engine"
         history = self.ctx.engine.getHistoryService()
         query = history.createHistoricProcessInstanceQuery().finished()
         if process_definition_key:
             query = query.processDefinitionKey(process_definition_key)
-        return query.list()
+        instances = query.list()
+        result = []
+        for i in range(int(instances.size())):
+            inst = instances.get(i)
+            result.append({
+                "id": str(inst.getId()),
+                "processDefinitionKey": str(inst.getProcessDefinitionKey()),
+                "startTime": str(inst.getStartTime()) if inst.getStartTime() else None,
+                "endTime": str(inst.getEndTime()) if inst.getEndTime() else None,
+            })
+        return result
 
     @keyword
     @except_interop_exception
-    def get_historic_variables(self, process_instance_id: str) -> Any:
-        """Returns historic variable instances as a dict."""
+    def get_historic_variables(self, process_instance_id: str) -> dict:
+        """Returns historic variable instances as a dict with Python-native values."""
         assert self.ctx.engine, "No engine"
         history = self.ctx.engine.getHistoryService()
         variables = history.createHistoricVariableInstanceQuery() \
@@ -39,7 +52,11 @@ class HistoryKeywords:
         result = {}
         for i in range(int(variables.size())):
             var = variables.get(i)
-            result[str(var.getName())] = var.getValue()
+            val = var.getValue()
+            # Ensure value is Python-native for Remote protocol compatibility
+            if val is not None and not isinstance(val, (str, int, float, bool, list, dict)):
+                val = str(val)
+            result[str(var.getName())] = val
         return result
 
     @keyword

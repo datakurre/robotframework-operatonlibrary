@@ -150,8 +150,10 @@ class DmnKeywords:
 
     @keyword
     @except_interop_exception
-    def should_have_decision_definition(self, decision_key: str) -> Any:
+    def should_have_decision_definition(self, decision_key: str) -> str:
         """Asserts that a decision definition with the given key is deployed.
+
+        Returns the decision definition ID.
 
         Example usage in Robot::
 
@@ -166,4 +168,4 @@ class DmnKeywords:
         assert result is not None, (
             f"Decision definition '{decision_key}' not found"
         )
-        return result
+        return str(result.getId())

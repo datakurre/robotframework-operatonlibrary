@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "robotframework-operaton"
+version = "1.0.0a1"
+description = "Robot Framework library for Operaton BPM — CPython proxy that auto-spawns the GraalPy/JVM backend"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "Operaton contributors" }]
+keywords = ["robotframework", "operaton", "bpm", "dmn", "testing"]
+classifiers = [
+    "Framework :: Robot Framework",
+    "Framework :: Robot Framework :: Library",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = ["robotframework>=5.0"]
+
+[project.urls]
+Homepage = "https://github.com/operaton/robotframework-operaton"
+Repository = "https://github.com/operaton/robotframework-operaton"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/Operaton"]

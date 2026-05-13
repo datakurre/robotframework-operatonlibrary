@@ -4,14 +4,26 @@ Guidance for coding agents working in this repository.
 
 ## Project identity
 
-- **Name:** `operaton-bpm-extension-robot` (Maven coordinates: `org.operaton.bpm.extension.robot:operaton-bpm-extension-robot:1.0-SNAPSHOT`)
-- **Purpose:** A standalone Robot Framework library + runner for acceptance-testing Operaton BPM processes and DMN decisions, built on GraalPy.
-- **Language mix:** Java 17 source/target (JDK 21 runtime), Python via GraalPy 25.0.2, Robot Framework 7.1.1.
+- **Name:** `robotframework-operaton` (Maven coordinates: `org.operaton.bpm.extension.robot:operaton-bpm-extension-robot:1.0-SNAPSHOT`)
+- **Purpose:** A standalone Robot Framework library + runner for acceptance-testing Operaton BPM processes and DMN decisions, built on GraalPy. Includes a CPython proxy wheel for RobotCode/VS Code integration.
+- **Language mix:** Java 17 source/target (JDK 21 runtime), Python via GraalPy 25.0.2, Robot Framework 7.1.1, CPython proxy package.
 - **Status:** Single-module, no parent pom, no monorepo dependency.
 
 ## Architecture
 
 ```
+┌─────────────────────────────────────────────────────────────┐
+│ RobotCode (VS Code)  or  CPython robot CLI                  │
+│   → uses Operaton.libspec for keyword discovery (LSP)       │
+│   → imports python/src/Operaton/ proxy for execution        │
+└──────────┬──────────────────────────────────────────────────┘
+           │ XML-RPC (Robot Framework Remote protocol)
+           ▼
+┌────────────────────────┐
+│ RobotRemote.java       │  GraalPy Context + robotremoteserver
+│ (--remote mode)        │  Hosts Operaton library over XML-RPC
+└──────────┬─────────────┘
+           ▼
 ┌────────────────────────┐
 │ Robot.java (main)      │  GraalPy Context bootstrap
 └──────────┬─────────────┘
@@ -38,13 +50,17 @@ Tests are driven by JUnit 5: each `*Test.java` calls `RobotCliTest.runRobot(...)
 | Path | Role |
 |---|---|
 | [pom.xml](pom.xml) | Single-module Maven build; flattened properties; `native` profile. |
-| [src/main/java/org/operaton/bpm/extension/robot/Robot.java](src/main/java/org/operaton/bpm/extension/robot/Robot.java) | CLI entry point (forwards args to `robot.run.run_cli`). |
+| [src/main/java/org/operaton/bpm/extension/robot/Robot.java](src/main/java/org/operaton/bpm/extension/robot/Robot.java) | CLI entry point (forwards args to `robot.run.run_cli`). Dispatches `--watch` and `--remote`. |
+| [src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java](src/main/java/org/operaton/bpm/extension/robot/RobotRemote.java) | Remote server mode: hosts Operaton library over XML-RPC for CPython/RobotCode. |
+| [src/main/java/org/operaton/bpm/extension/robot/Libdoc.java](src/main/java/org/operaton/bpm/extension/robot/Libdoc.java) | Generates keyword docs (HTML) and machine-readable `.libspec` for RobotCode LSP. |
 | [src/main/resources/org.graalvm.python.vfs/src/Operaton.py](src/main/resources/org.graalvm.python.vfs/src/Operaton.py) | The keyword library. **Add new keywords here.** |
 | [src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java](src/test/java/org/operaton/bpm/extension/robot/RobotCliTest.java) | Shared `runRobot(outputDir, suitePath)` helper + smoke tests. |
 | `src/test/java/.../*Test.java` | One JUnit class per feature; each invokes a same-named `.robot` suite. |
 | [src/test/resources/example/](src/test/resources/example/) | Robot suites + BPMN + DMN fixtures. |
+| [python/](python/) | CPython proxy wheel (`robotframework-operaton`). Auto-spawns JVM Remote server. |
+| [robot.toml](robot.toml) | RobotCode configuration for VS Code keyword discovery and test execution. |
 | [devenv.nix](devenv.nix) | JDK 21, Maven, formatters. |
-| [Makefile](Makefile) | Standard targets: `build`, `test`, `check`, `format`, `clean`, `native`, `robot`. |
+| [Makefile](Makefile) | Standard targets: `build`, `test`, `check`, `format`, `clean`, `native`, `robot`, `shade`, `libspec`, `remote`, `wheel`. |
 | `tmp/` | **Reference checkout — do not modify.** Originally the source the library was ported from. |
 
 ## Build and test — always via devenv
@@ -54,8 +70,12 @@ Use `devenv shell --no-eval-cache -- <cmd>` for one-shot invocations. Inside an 
 ```sh
 devenv shell --no-eval-cache -- mvn -q -DskipTests package   # build
 devenv shell --no-eval-cache -- mvn test                     # run all JUnit + Robot suites
+devenv shell --no-eval-cache -- mvn -Pshade package -DskipTests  # fat JAR
 devenv shell --no-eval-cache -- mvn -Pnative package         # native image (slow)
 devenv shell --no-eval-cache -- make format                  # google-java-format
+devenv shell --no-eval-cache -- make libspec                 # generate Operaton.libspec
+devenv shell --no-eval-cache -- make remote                  # start Remote server on :8270
+devenv shell --no-eval-cache -- make wheel                   # build CPython proxy wheel
 ```
 
 The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalpy-maven-plugin`; expect several minutes on a cold cache.
@@ -78,6 +98,12 @@ The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalp
 
 - Always `[Setup] Setup Process Engine` and `[Teardown] Teardown Process Engine` per test case (engine is shared `GLOBAL` scope; teardown closes and nulls it).
 - Use `${CURDIR}${/}fixture.bpmn` for file references — `${CURDIR}` resolves to the suite's directory.
+
+### Keyword return types (Remote-safety)
+
+- Keywords must return **Python-native types only** (str, int, float, bool, list, dict, None) so they serialize cleanly over Robot Framework's Remote protocol (XML-RPC).
+- Convert Java collections/objects to Python equivalents before returning.
+- The `create_*_variable()` keywords intentionally return Java boxed types that GraalPy auto-boxes to Python int/float/bool for serialization.
 
 ### Java style
 
@@ -104,6 +130,7 @@ The first build downloads Robot Framework 7.1.1 into the GraalPy VFS via `graalp
 - Do **not** restore the deleted top-level `lib/` or `example/` directories — those locations are replaced by the standard Maven paths under `src/`.
 - Do **not** use `run_cli()` in test code (it calls `sys.exit()`); use `run(...)` like `RobotCliTest` does.
 - Do **not** generate Robot XML output/log/report during JUnit runs — `pyexpat` interactions across GraalPy contexts are fragile. Pass `output="NONE", log="NONE", report="NONE"`.
+- Do **not** return raw Java objects from keywords — always convert to Python-native types for Remote protocol compatibility.
 
 ## Quick verification after changes
 

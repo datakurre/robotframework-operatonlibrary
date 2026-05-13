@@ -67,7 +67,11 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def deploy_resources(self, *paths: str, name: str = "Test Deployment") -> Any:
+    def deploy_resources(self, *paths: str, name: str = "Test Deployment") -> str:
+        """Deploys BPMN/DMN resources to the engine.
+
+        Returns the deployment ID.
+        """
         assert self.engine, "No engine"
         repository = self.engine.getRepositoryService()
         deployment = repository.createDeployment()
@@ -77,8 +81,8 @@ class Operaton(DynamicCore):
                 Path(path).read_text(),
             )
         deployment.name(name)
-        deployment.deploy()
-        return deployment
+        result = deployment.deploy()
+        return str(result.getId())
 
     @keyword
     @except_interop_exception
@@ -130,10 +134,24 @@ class Operaton(DynamicCore):
 
     @keyword
     @except_interop_exception
-    def get_tasks(self, process_instance_id: str) -> Any:
+    def get_tasks(self, process_instance_id: str) -> list:
+        """Returns all active tasks for the process instance as a list of dicts.
+
+        Each dict has: id, name, taskDefinitionKey, assignee.
+        """
         assert self.engine, "No engine"
         task_service = self.engine.getTaskService()
-        return task_service.createTaskQuery().processInstanceId(process_instance_id).list()
+        tasks = task_service.createTaskQuery().processInstanceId(process_instance_id).list()
+        result = []
+        for i in range(int(tasks.size())):
+            task = tasks.get(i)
+            result.append({
+                "id": str(task.getId()),
+                "name": str(task.getName()) if task.getName() else None,
+                "taskDefinitionKey": str(task.getTaskDefinitionKey()),
+                "assignee": str(task.getAssignee()) if task.getAssignee() else None,
+            })
+        return result
 
     @keyword
     @except_interop_exception

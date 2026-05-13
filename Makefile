@@ -187,6 +187,35 @@ docs:
 	mvn -q -DskipTests package
 	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.html"
 
+.PHONY: libspec
+libspec:
+	mkdir -p docs
+	mvn -q -DskipTests package
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Libdoc docs/Operaton.libspec"
+
+# ─── Remote server ───────────────────────────────────────────────────────────
+# Starts the Operaton keyword library as a Robot Framework Remote Server.
+# Other tools (RobotCode, plain CPython robot) connect via:
+#   Library  Remote  http://127.0.0.1:<port>  WITH NAME  Operaton
+
+.PHONY: remote
+remote:
+	mvn exec:exec -Dexec.executable="$(JAVA)" -Dexec.classpathScope=test -Dexec.args="-cp %classpath org.operaton.bpm.extension.robot.Robot --remote --port 8270 --port-file operaton-remote.port"
+
+.PHONY: remote-shade
+remote-shade:
+	$(JAVA) -jar $(JAR_FAT) --remote --port 8270 --port-file operaton-remote.port
+
+# ─── Python proxy wheel ──────────────────────────────────────────────────────
+
+.PHONY: wheel
+wheel:
+	cd python && pip wheel --no-deps -w dist .
+
+.PHONY: install-proxy
+install-proxy:
+	pip install -e python/
+
 .PHONY: shell
 shell:
 	devenv shell

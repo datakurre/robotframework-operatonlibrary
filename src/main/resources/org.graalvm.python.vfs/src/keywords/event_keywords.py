@@ -47,8 +47,11 @@ class EventKeywords:
 
     @keyword
     @except_interop_exception
-    def should_have_incident(self, process_instance_id: str, incident_type: str = ""):
-        """Asserts that the process instance has at least one incident."""
+    def should_have_incident(self, process_instance_id: str, incident_type: str = "") -> list:
+        """Asserts that the process instance has at least one incident.
+
+        Returns a list of incident dicts with: id, incidentType, activityId, message.
+        """
         assert self.ctx.engine, "No engine"
         runtime = self.ctx.engine.getRuntimeService()
         query = runtime.createIncidentQuery().processInstanceId(process_instance_id)
@@ -58,4 +61,13 @@ class EventKeywords:
         assert int(incidents.size()) > 0, (
             f"No incidents found for process instance '{process_instance_id}'"
         )
-        return incidents
+        result = []
+        for i in range(int(incidents.size())):
+            inc = incidents.get(i)
+            result.append({
+                "id": str(inc.getId()),
+                "incidentType": str(inc.getIncidentType()),
+                "activityId": str(inc.getActivityId()) if inc.getActivityId() else None,
+                "message": str(inc.getIncidentMessage()) if inc.getIncidentMessage() else None,
+            })
+        return result

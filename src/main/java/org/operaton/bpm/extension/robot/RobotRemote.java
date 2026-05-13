@@ -1,0 +1,87 @@
+package org.operaton.bpm.extension.robot;
+
+import java.io.IOException;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.python.embedding.GraalPyResources;
+
+/**
+ * Starts a Robot Framework Remote Server hosting the Operaton keyword library.
+ *
+ * <p>This allows CPython-based tools (e.g. RobotCode VSCode extension) to execute Operaton keywords
+ * over the XML-RPC Remote protocol while the actual library runs inside GraalPy with full Java
+ * interop.
+ *
+ * <p>Usage: {@code java -jar fat.jar --remote [--port PORT] [--port-file PATH]}
+ */
+public class RobotRemote {
+  private static final String PYTHON = "python";
+
+  static void run(String[] args) {
+    int port = 0;
+    String portFile = "operaton-remote.port";
+
+    // Parse --remote specific args (skip first "--remote" arg)
+    for (int i = 1; i < args.length; i++) {
+      if ("--port".equals(args[i]) && i + 1 < args.length) {
+        port = Integer.parseInt(args[++i]);
+      } else if (args[i].startsWith("--port=")) {
+        port = Integer.parseInt(args[i].substring("--port=".length()));
+      } else if ("--port-file".equals(args[i]) && i + 1 < args.length) {
+        portFile = args[++i];
+      } else if (args[i].startsWith("--port-file=")) {
+        portFile = args[i].substring("--port-file=".length());
+      }
+    }
+
+    System.out.println("Starting Operaton Remote Server...");
+    System.out.println("  port: " + (port == 0 ? "auto" : port));
+    System.out.println("  port-file: " + portFile);
+
+    try (Context context =
+        GraalPyResources.contextBuilder()
+            .allowAllAccess(true)
+            .allowExperimentalOptions(true)
+            .build()) {
+      context.getBindings(PYTHON).putMember("_remote_port", port);
+      context.getBindings(PYTHON).putMember("_remote_port_file", portFile);
+      context.getBindings(PYTHON).putMember("cwd", System.getProperty("user.dir"));
+      Source source;
+      try {
+        source =
+            Source.newBuilder(
+                    PYTHON,
+                    """
+                    import os
+                    import sys
+                    sys.path.insert(0, cwd)
+                    sys.path.insert(1, os.path.join(cwd, "lib"))
+
+                    from Operaton import Operaton
+                    from robotremoteserver import RobotRemoteServer
+
+                    library = Operaton()
+                    RobotRemoteServer(
+                        library,
+                        host='127.0.0.1',
+                        port=int(_remote_port),
+                        port_file=_remote_port_file if _remote_port_file else None,
+                        allow_remote_stop=True,
+                    )
+                    """,
+                    "<internal>")
+                .build();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      context.eval(source);
+    } catch (PolyglotException e) {
+      if (e.isExit()) {
+        System.exit(e.getExitStatus());
+      } else {
+        throw e;
+      }
+    }
+  }
+}

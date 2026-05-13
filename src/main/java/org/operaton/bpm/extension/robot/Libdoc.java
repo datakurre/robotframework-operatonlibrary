@@ -6,7 +6,15 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.python.embedding.GraalPyResources;
 
-/** Generates Robot Framework keyword documentation for Operaton via {@code robot.libdoc}. */
+/**
+ * Generates Robot Framework keyword documentation for Operaton via {@code robot.libdoc}.
+ *
+ * <p>Usage: {@code Libdoc [output-path]} — defaults to {@code docs/Operaton.html}.
+ *
+ * <p>The output format is inferred from the file extension: {@code .html} produces human-readable
+ * docs, {@code .libspec} or {@code .xml} produces a machine-readable XML spec (used by RobotCode
+ * LSP for keyword discovery), and {@code .json} produces a JSON spec.
+ */
 public class Libdoc {
   private static final String PYTHON = "python";
 
@@ -24,8 +32,16 @@ public class Libdoc {
             Source.newBuilder(
                     PYTHON,
                     """
+                    import os
                     from robot.libdoc import libdoc
-                    libdoc("Operaton", output)
+                    # Determine format from file extension
+                    ext = os.path.splitext(output)[1].lower()
+                    if ext in ('.libspec', '.xml'):
+                        libdoc("Operaton", output, format="LIBSPEC")
+                    elif ext == '.json':
+                        libdoc("Operaton", output, format="JSON")
+                    else:
+                        libdoc("Operaton", output)
                     """,
                     "<internal>")
                 .build();

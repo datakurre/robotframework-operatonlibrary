@@ -19,6 +19,12 @@ public class Robot {
       return;
     }
 
+    // Delegate to remote server mode when --remote is the first argument
+    if (args.length > 0 && "--remote".equals(args[0])) {
+      RobotRemote.run(args);
+      return;
+    }
+
     boolean debugMode = isDebugMode(args);
     if (debugMode) {
       System.setProperty("ROBOT_LOG_LEVEL", "INFO");

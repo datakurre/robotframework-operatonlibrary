@@ -1,4 +1,4 @@
-# robotframework-operatonlibrary
+# robotframework-operaton
 
 A [Robot Framework](https://robotframework.org/) library for acceptance-testing
 [Operaton BPM](https://operaton.org/) processes and DMN decisions, powered by
@@ -181,6 +181,84 @@ gates the Operaton/Java log level simultaneously:
 |---|---|---|
 | *(not set)* / `INFO` / `WARN` | default | suppressed (WARN+) |
 | `DEBUG` or `TRACE` | verbose | INFO+ (full engine output) |
+
+---
+
+## RobotCode / VS Code integration
+
+The Operaton library runs on GraalPy (not CPython), but can be used seamlessly
+with the [RobotCode](https://robotcode.io/) VS Code extension for keyword
+discovery (completions, hover, go-to-definition) and test execution.
+
+### How it works
+
+1. **LSP keyword discovery** — a generated `Operaton.libspec` file provides
+   RobotCode's language server with full keyword signatures and documentation.
+2. **Test execution** — a CPython proxy package (`robotframework-operaton`)
+   auto-spawns the JVM fat JAR as a Robot Framework Remote Server and delegates
+   all keyword calls over XML-RPC.
+
+### Setup
+
+```sh
+# 1. Build the fat JAR (one-time)
+devenv shell --no-eval-cache -- mvn -Pshade package -DskipTests
+
+# 2. Generate the libspec (for LSP keyword discovery)
+devenv shell --no-eval-cache -- make libspec
+
+# 3. Install the CPython proxy
+pip install -e python/
+```
+
+The repository includes a [`robot.toml`](robot.toml) that configures RobotCode:
+
+```toml
+paths = ["src/test/resources/example"]
+
+[env]
+OPERATON_JAR = "target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar"
+
+[tool.robotcode-analyze.cache]
+ignored-libraries = ["Operaton"]
+```
+
+Key settings:
+- `OPERATON_JAR` tells the proxy where to find the fat JAR
+- `ignored-libraries` prevents RobotCode from importing the library during
+  analysis (which would start a JVM); the `.libspec` provides keyword info
+
+### Usage in VS Code
+
+Once configured, open any `.robot` file that uses `Library  Operaton`. You get:
+
+- **Keyword completions** — all 44 keywords with argument signatures
+- **Hover documentation** — docstrings from `Operaton.py`
+- **Run Test** — click the gutter play button; the proxy auto-starts the JVM,
+  runs the test, and shows results in the Test Results panel
+- **Debug** — Robot-level breakpoints work (Python-side); Java keyword
+  internals are opaque
+
+### Remote server (standalone)
+
+You can also run the Remote server manually for use with any Robot Framework
+runner:
+
+```sh
+# Start the server on port 8270
+make remote
+
+# Or via the fat JAR directly
+java -jar target/operaton-bpm-extension-robot-1.0-SNAPSHOT-fat.jar \
+    --remote --port 8270
+```
+
+Then reference it in your suite:
+
+```robot
+*** Settings ***
+Library    Remote    http://127.0.0.1:8270    WITH NAME    Operaton
+```
 
 ---
 
