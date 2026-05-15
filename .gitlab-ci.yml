@@ -20,7 +20,7 @@ variables:
 
 test:
   stage: test
-  image: eclipse-temurin:21-jdk-jammy
+  image: maven:3-eclipse-temurin-21
   <<: *maven-cache
   script:
     - mvn -q test
@@ -36,7 +36,7 @@ test:
 
 build-release:
   stage: release
-  image: eclipse-temurin:21-jdk-jammy
+  image: maven:3-eclipse-temurin-21
   <<: *maven-cache
   only:
     - tags
