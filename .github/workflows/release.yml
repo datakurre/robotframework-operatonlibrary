@@ -11,6 +11,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      MAVEN_OPTS: -Dpolyglot.engine.WarnInterpreterOnly=false
 
     steps:
       - uses: actions/checkout@v4

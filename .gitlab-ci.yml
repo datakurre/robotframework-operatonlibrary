@@ -6,6 +6,7 @@ variables:
   MAVEN_OPTS: >-
     -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
     -Dmaven.artifact.threads=4
+    -Dpolyglot.engine.WarnInterpreterOnly=false
 
 # ── Cache Maven local repository across jobs/pipelines ────────────────────────
 # The graalpy-maven-plugin downloads Python wheels into ~/.m2 on first build;
