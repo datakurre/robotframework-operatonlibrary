@@ -1,6 +1,7 @@
 stages:
   - test
   - release
+  - pages
 
 variables:
   MAVEN_OPTS: >-
@@ -132,3 +133,52 @@ publish-release:
         - name: "CPython proxy wheel"
           url: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/operaton-robot/$VERSION/robotframework_operaton-$VERSION-py3-none-any.whl"
           link_type: package
+
+# ── GitLab Pages ──────────────────────────────────────────────────────────────
+# Publishes keyword reference (Operaton.html) and Operaton.libspec on every
+# push to main.  GitLab Pages requires the artifacts to live under public/.
+
+pages:
+  stage: pages
+  image: maven:3-eclipse-temurin-21
+  <<: *maven-cache
+  only:
+    - main
+  script:
+    # Build the project (skip tests for speed).
+    - mvn -q -DskipTests package
+
+    # Generate the HTML keyword reference.
+    - mkdir -p public
+    - >
+      mvn -q exec:exec
+      -Dexec.executable=java
+      -Dexec.classpathScope=test
+      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc public/Operaton.html"
+
+    # Generate the libspec file for RobotCode keyword discovery.
+    - >
+      mvn -q exec:exec
+      -Dexec.executable=java
+      -Dexec.classpathScope=test
+      "-Dexec.args=-cp %classpath org.operaton.bpm.extension.robot.Libdoc public/Operaton.libspec"
+
+    # Add a minimal index.html that redirects to the keyword reference.
+    - |
+      cat > public/index.html <<'EOF'
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta http-equiv="refresh" content="0; url=Operaton.html">
+        <title>Operaton Robot Framework Library</title>
+      </head>
+      <body>
+        <p>Redirecting to <a href="Operaton.html">Operaton keyword reference</a>&hellip;</p>
+      </body>
+      </html>
+      EOF
+
+  artifacts:
+    paths:
+      - public
