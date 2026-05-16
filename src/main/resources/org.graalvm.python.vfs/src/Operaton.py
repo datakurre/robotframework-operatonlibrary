@@ -45,6 +45,96 @@ except Exception:
 
 
 class Operaton(DynamicCore):
+    """Robot Framework keyword library for acceptance-testing Operaton BPM processes and DMN decisions.
+
+    = Overview =
+
+    The ``Operaton`` library provides a comprehensive set of keywords for deploying and executing
+    BPMN processes and DMN decision tables against an in-memory Operaton process engine. It is
+    designed for use in acceptance tests where business logic encoded in BPMN/DMN must be verified
+    end-to-end without any external infrastructure.
+
+    The engine is created in-memory (H2) when ``Setup Process Engine`` is called and torn down by
+    ``Teardown Process Engine``. The typical pattern is to call these in the test ``[Setup]`` and
+    ``[Teardown]`` sections respectively.
+
+    = Quick Start =
+
+    A minimal test suite looks like this:
+
+    | ``*** Settings ***``
+    | Library    Operaton
+    |
+    | ``*** Test Cases ***``
+    | Order Process Happy Path
+    |     [Setup]    Setup Process Engine
+    |     [Teardown]    Teardown Process Engine
+    |     Deploy Resources    ${CURDIR}${/}order-process.bpmn
+    |     Start Instance    order-process    business_key=order-001
+    |     Should Have Task    Review Order
+    |     Complete Task    Review Order
+    |     Should Be Ended
+
+    = Current Instance State =
+
+    After ``Start Instance`` or ``Start Instance With Variables``, the library stores the instance
+    ID and business key as *current instance state*. All keywords that accept
+    ``process_instance_id`` will automatically use the current instance when the argument is
+    omitted, so you rarely need to capture the return value explicitly.
+
+    If no ``business_key`` is supplied to ``Start Instance``, a UUID4 is generated automatically.
+    The state is cleared when ``Teardown Process Engine`` runs.
+
+    Use ``Get Current Instance`` and ``Get Current Business Key`` to inspect the stored values.
+
+    = Task Identification =
+
+    Keywords that accept a task definition key (``Should Have Task``, ``Complete Task``,
+    ``Submit Task Form``, ``Get Task Form Variables``) also accept a human-readable *task name*
+    as shown in the BPMN modeller. For example, if the task element has ``name="Review Order"``,
+    you can pass that string directly instead of the technical ``id`` attribute.
+
+    If more than one active task shares the same name on the same instance, an error is raised —
+    use the definition key in that case.
+
+    = Deploying Resources =
+
+    ``Deploy Resources`` accepts one or more absolute paths to ``.bpmn`` and ``.dmn`` files and
+    deploys them in a single deployment. Use Robot's ``${CURDIR}${/}`` prefix to build portable
+    paths relative to the test suite file:
+
+    | Deploy Resources    ${CURDIR}${/}my-process.bpmn    ${CURDIR}${/}my-rules.dmn
+
+    = Keyword Groups =
+
+    | *Group*              | *Keywords*                                                        |
+    | Engine lifecycle     | Setup Process Engine, Teardown Process Engine, Deploy Resources   |
+    | Process instances    | Start Instance, Start Instance With Variables, Get Current Instance, Get Current Business Key |
+    | User tasks           | Should Have Task, Complete Task, Get Tasks                        |
+    | Process variables    | Get Variable, Set Variable                                        |
+    | Process state        | Should Be Active, Should Be Ended, Should Be Suspended, Suspend Instance, Activate Instance, Should Have N Active Tasks |
+    | History              | Get Activity History, Get Historic Variables, Get Completed Instances, Get Process Definition Id, Get Process Model Xml |
+    | Events               | Correlate Message, Send Message, Signal Event, Throw Signal, Should Have Incident |
+    | External tasks       | Fetch And Lock, Complete External Task, Throw Bpmn Error          |
+    | DMN decisions        | Evaluate Decision, Evaluate Decision Table, Decision Single Result, Decision Single Entry, Decision Result Should Contain, Collect Entries, Should Have Decision Definition |
+    | Forms                | Submit Task Form, Get Task Form Variables                         |
+    | Typed variables      | Create Integer Variable, Create Double Variable, Create Boolean Variable, Create Date Variable |
+    | Timers               | Set Clock, Advance Clock, Reset Clock, Execute Timer Jobs         |
+    | Visualisation        | Log Bpmn Execution, Log Dmn Result                                |
+
+    = Installation =
+
+    The library is packaged as a fat JAR (``operaton-robot-*.jar``) that bundles GraalPy,
+    Robot Framework, and the Operaton engine. Run it with:
+
+    | java -jar operaton-robot.jar path/to/MyTests.robot
+
+    A CPython proxy wheel (``robotframework-operaton``) is also available for IDE integration via
+    RobotCode / VS Code, forwarding keyword calls to a running Remote server.
+
+    See the project README for full setup and configuration instructions.
+    """
+
     ROBOT_LIBRARY_SCOPE = "GLOBAL"
 
     engine: Any = None
