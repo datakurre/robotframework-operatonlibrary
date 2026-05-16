@@ -22,16 +22,17 @@ class BpmnKeywords:
 
     @keyword
     @except_interop_exception
-    def log_bpmn_execution(self, process_instance_id: str):
+    def log_bpmn_execution(self, process_instance_id: str = ""):
         """Renders the executed BPMN path as SVG and logs it to the Robot log.
 
         Fetches BPMN XML and activity history from the engine, then delegates to
         the bundled ``bpmn-render.js`` script (invoked via ``node``).
 
         Requires Node.js 18+ on PATH. If ``node`` is unavailable, logs a warning
-        and returns without failing.
+        and returns without failing. Defaults to the current instance in scope.
         """
         assert self.ctx.engine, "No engine"
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
 
         BpmnRenderer = java.type(
             "org.operaton.bpm.extension.robot.BpmnRenderer"
@@ -39,18 +40,18 @@ class BpmnKeywords:
         if not BpmnRenderer.isNodeAvailable():
             logger.warn(
                 f"BPMN rendering skipped: 'node' not found on PATH "
-                f"(process instance: {process_instance_id})"
+                f"(process instance: {instance_id})"
             )
             return
 
         history = self.ctx.engine.getHistoryService()
         instance = (
             history.createHistoricProcessInstanceQuery()
-            .processInstanceId(process_instance_id)
+            .processInstanceId(instance_id)
             .singleResult()
         )
         assert instance is not None, (
-            f"Process instance '{process_instance_id}' not found in history"
+            f"Process instance '{instance_id}' not found in history"
         )
         process_def_id = str(instance.getProcessDefinitionId())
 
@@ -65,7 +66,7 @@ class BpmnKeywords:
         # Fetch activity history
         activities_raw = (
             history.createHistoricActivityInstanceQuery()
-            .processInstanceId(process_instance_id)
+            .processInstanceId(instance_id)
             .orderByHistoricActivityInstanceStartTime()
             .asc()
             .list()
@@ -74,7 +75,7 @@ class BpmnKeywords:
         # Collect incident activity IDs
         incidents_raw = (
             history.createHistoricIncidentQuery()
-            .processInstanceId(process_instance_id)
+            .processInstanceId(instance_id)
             .list()
         )
         incident_activity_ids = set()

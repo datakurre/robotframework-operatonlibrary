@@ -43,12 +43,16 @@ class HistoryKeywords:
 
     @keyword
     @except_interop_exception
-    def get_historic_variables(self, process_instance_id: str) -> dict:
-        """Returns historic variable instances as a dict with Python-native values."""
+    def get_historic_variables(self, process_instance_id: str = "") -> dict:
+        """Returns historic variable instances as a dict with Python-native values.
+
+        Defaults to the current instance in scope.
+        """
         assert self.ctx.engine, "No engine"
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
         variables = history.createHistoricVariableInstanceQuery() \
-            .processInstanceId(process_instance_id).list()
+            .processInstanceId(instance_id).list()
         result = {}
         for i in range(int(variables.size())):
             var = variables.get(i)
@@ -61,15 +65,17 @@ class HistoryKeywords:
 
     @keyword
     @except_interop_exception
-    def get_activity_history(self, process_instance_id: str) -> list:
+    def get_activity_history(self, process_instance_id: str = "") -> list:
         """Returns a list of historic activity instances as dicts.
 
         Each dict has: activityId, activityName, activityType, canceled, completed.
+        Defaults to the current instance in scope.
         """
         assert self.ctx.engine, "No engine"
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
         activities = (history.createHistoricActivityInstanceQuery()
-                      .processInstanceId(process_instance_id)
+                      .processInstanceId(instance_id)
                       .orderByHistoricActivityInstanceStartTime().asc()
                       .list())
         result = []
@@ -99,14 +105,18 @@ class HistoryKeywords:
 
     @keyword
     @except_interop_exception
-    def get_process_definition_id(self, process_instance_id: str) -> str:
-        """Returns the process definition ID for a given process instance."""
+    def get_process_definition_id(self, process_instance_id: str = "") -> str:
+        """Returns the process definition ID for a given process instance.
+
+        Defaults to the current instance in scope.
+        """
         assert self.ctx.engine, "No engine"
+        instance_id = self.ctx._resolve_instance_id(process_instance_id)
         history = self.ctx.engine.getHistoryService()
         instance = (history.createHistoricProcessInstanceQuery()
-                    .processInstanceId(process_instance_id)
+                    .processInstanceId(instance_id)
                     .singleResult())
         assert instance is not None, (
-            f"Process instance '{process_instance_id}' not found in history"
+            f"Process instance '{instance_id}' not found in history"
         )
         return str(instance.getProcessDefinitionId())
